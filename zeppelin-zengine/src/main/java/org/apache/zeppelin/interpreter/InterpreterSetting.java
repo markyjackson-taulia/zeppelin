@@ -17,6 +17,9 @@
 
 package org.apache.zeppelin.interpreter;
 
+import static org.apache.zeppelin.conf.ZeppelinConfiguration.ConfVars.ZEPPELIN_INTERPRETER_MAX_POOL_SIZE;
+import static org.apache.zeppelin.conf.ZeppelinConfiguration.ConfVars.ZEPPELIN_INTERPRETER_OUTPUT_LIMIT;
+import static org.apache.zeppelin.util.IdHashes.generateId;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -25,8 +28,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.internal.StringMap;
+
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.zeppelin.conf.ZeppelinConfiguration;
 import org.apache.zeppelin.dep.Dependency;
 import org.apache.zeppelin.dep.DependencyResolver;
@@ -38,24 +41,19 @@ import org.apache.zeppelin.interpreter.launcher.InterpreterLauncher;
 import org.apache.zeppelin.interpreter.launcher.ShellScriptLauncher;
 import org.apache.zeppelin.interpreter.launcher.SparkInterpreterLauncher;
 import org.apache.zeppelin.interpreter.lifecycle.NullLifecycleManager;
+import org.apache.zeppelin.interpreter.launcher.SparkK8InterpreterLauncher;
 import org.apache.zeppelin.interpreter.remote.RemoteAngularObjectRegistry;
 import org.apache.zeppelin.interpreter.remote.RemoteInterpreter;
 import org.apache.zeppelin.interpreter.remote.RemoteInterpreterEventPoller;
 import org.apache.zeppelin.interpreter.remote.RemoteInterpreterProcess;
 import org.apache.zeppelin.interpreter.remote.RemoteInterpreterProcessListener;
-import org.apache.zeppelin.interpreter.remote.RemoteInterpreterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -65,10 +63,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.zeppelin.conf.ZeppelinConfiguration.ConfVars.ZEPPELIN_INTERPRETER_MAX_POOL_SIZE;
-import static org.apache.zeppelin.conf.ZeppelinConfiguration.ConfVars.ZEPPELIN_INTERPRETER_OUTPUT_LIMIT;
-import static org.apache.zeppelin.util.IdHashes.generateId;
 
 /**
  * Represent one InterpreterSetting in the interpreter setting page
@@ -281,9 +275,14 @@ public class InterpreterSetting {
     this.conf = o.getConf();
   }
 
-  private void createLauncher() {
+  private void createLauncher(Properties properties) {
     if (group.equals("spark")) {
-      this.launcher = new SparkInterpreterLauncher(this.conf);
+      if (properties.getProperty("master") != null
+              && properties.getProperty("master").startsWith("k8s")) {
+        this.launcher = new SparkK8InterpreterLauncher(this.conf);
+      } else {
+        this.launcher = new SparkInterpreterLauncher(this.conf);
+      }
     } else {
       this.launcher = new ShellScriptLauncher(this.conf);
     }
@@ -667,8 +666,9 @@ public class InterpreterSetting {
   }
 
   synchronized RemoteInterpreterProcess createInterpreterProcess() throws IOException {
+    Properties properties = getJavaProperties();
     if (launcher == null) {
-      createLauncher();
+      createLauncher(properties);
     }
     InterpreterLaunchContext launchContext = new
         InterpreterLaunchContext(getJavaProperties(), option, interpreterRunner, id, group, name);

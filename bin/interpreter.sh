@@ -23,7 +23,8 @@ function usage() {
     echo "usage) $0 -p <port> -r <intp_port> -d <interpreter dir to load> -l <local interpreter repo dir to load> -g <interpreter group name>"
 }
 
-while getopts "hc:p:r:d:l:v:u:g:" o; do
+while getopts "hc:p:r:d:l:v:u:g:i:t:" o; do
+
     case ${o} in
         h)
             usage
@@ -59,6 +60,13 @@ while getopts "hc:p:r:d:l:v:u:g:" o; do
         g)
             INTERPRETER_SETTING_NAME=${OPTARG}
             ;;
+        i)
+            INTERPRETER_GROUP_ID=${OPTARG}
+            ;;
+        t)
+            INTERPRETER_PROCESS_ID=${OPTARG}
+            ;;
+
         esac
 done
 
@@ -206,7 +214,9 @@ if [[ ! -z "$ZEPPELIN_IMPERSONATE_USER" ]]; then
 fi
 
 if [[ -n "${SPARK_SUBMIT}" ]]; then
-    if [[ -n "$ZEPPELIN_IMPERSONATE_USER" ]] && [[ "$ZEPPELIN_IMPERSONATE_SPARK_PROXY_USER" != "false" ]];  then
+    if [[ -n "${RUN_SPARK_ON_K8}" ]]; then
+       INTERPRETER_RUN_COMMAND+=' '` echo ${SPARK_SUBMIT} --class ${ZEPPELIN_SERVER} ${SPARK_SUBMIT_OPTIONS} --conf spark.app.name=zri-${INTERPRETER_GROUP_ID} --conf spark.kubernetes.driver.label.interpreter-processId=${INTERPRETER_PROCESS_ID} --conf spark.metrics.namespace=zeppelin_${INTERPRETER_GROUP_ID} ${SPARK_APP_JAR} ${PORT}`
+    elif [[ -n "$ZEPPELIN_IMPERSONATE_USER" ]] && [[ "$ZEPPELIN_IMPERSONATE_SPARK_PROXY_USER" != "false" ]];  then
        INTERPRETER_RUN_COMMAND+=' '` echo ${SPARK_SUBMIT} --class ${ZEPPELIN_SERVER} --driver-class-path \"${ZEPPELIN_INTP_CLASSPATH_OVERRIDES}:${ZEPPELIN_INTP_CLASSPATH}\" --driver-java-options \"${JAVA_INTP_OPTS}\" ${SPARK_SUBMIT_OPTIONS} ${ZEPPELIN_SPARK_CONF} --proxy-user ${ZEPPELIN_IMPERSONATE_USER} ${SPARK_APP_JAR} ${CALLBACK_HOST} ${PORT} ${INTP_PORT}`
     else
        INTERPRETER_RUN_COMMAND+=' '` echo ${SPARK_SUBMIT} --class ${ZEPPELIN_SERVER} --driver-class-path \"${ZEPPELIN_INTP_CLASSPATH_OVERRIDES}:${ZEPPELIN_INTP_CLASSPATH}\" --driver-java-options \"${JAVA_INTP_OPTS}\" ${SPARK_SUBMIT_OPTIONS} ${ZEPPELIN_SPARK_CONF} ${SPARK_APP_JAR} ${CALLBACK_HOST} ${PORT} ${INTP_PORT}`
@@ -219,6 +229,7 @@ if [[ ! -z "$ZEPPELIN_IMPERSONATE_USER" ]] && [[ -n "${suid}" || -z "${SPARK_SUB
     INTERPRETER_RUN_COMMAND+="'"
 fi
 
+echo $INTERPRETER_RUN_COMMAND
 eval $INTERPRETER_RUN_COMMAND &
 
 pid=$!

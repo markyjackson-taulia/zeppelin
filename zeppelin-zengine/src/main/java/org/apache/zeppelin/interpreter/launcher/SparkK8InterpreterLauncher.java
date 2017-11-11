@@ -47,7 +47,6 @@ public class SparkK8InterpreterLauncher extends SparkInterpreterLauncher {
     InterpreterOption option = context.getOption();
     InterpreterRunner runner = context.getRunner();
     String groupName = context.getInterpreterSettingGroup();
-    String name = context.getInterpreterSettingName();
 
     int connectTimeout =
             zConf.getInt(ZeppelinConfiguration.ConfVars.ZEPPELIN_INTERPRETER_CONNECT_TIMEOUT);
@@ -65,7 +64,7 @@ public class SparkK8InterpreterLauncher extends SparkInterpreterLauncher {
               zConf.getCallbackPortRange(),
               zConf.getInterpreterDir() + "/" + groupName, localRepoPath,
               buildEnvFromProperties(), connectTimeout, groupName,
-              context.getInterpreterSettingGroup());
+              context.getInterpreterSettingId());
     }
   }
 

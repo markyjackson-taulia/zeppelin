@@ -278,7 +278,7 @@ public class InterpreterSetting {
   private void createLauncher(Properties properties) {
     if (group.equals("spark")) {
       if (properties.getProperty("master") != null
-              && properties.getProperty("master").startsWith("k8s")) {
+              && properties.getProperty("master").startsWith("k8s://")) {
         this.launcher = new SparkK8InterpreterLauncher(this.conf);
       } else {
         this.launcher = new SparkInterpreterLauncher(this.conf);

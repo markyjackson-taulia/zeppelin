@@ -99,7 +99,7 @@ import java.util.concurrent.ConcurrentMap;
 public class RemoteInterpreterServer
   extends Thread
   implements RemoteInterpreterService.Iface, AngularObjectRegistryListener {
-  Logger logger = LoggerFactory.getLogger(RemoteInterpreterServer.class);
+  static Logger logger = LoggerFactory.getLogger(RemoteInterpreterServer.class);
 
   InterpreterGroup interpreterGroup;
   AngularObjectRegistry angularObjectRegistry;

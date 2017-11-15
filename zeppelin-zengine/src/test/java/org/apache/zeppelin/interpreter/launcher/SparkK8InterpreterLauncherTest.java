@@ -37,11 +37,11 @@ public class SparkK8InterpreterLauncherTest {
     properties.setProperty("ENV_1", "VALUE_1");
     properties.setProperty("property_1", "value_1");
     InterpreterOption option = new InterpreterOption();
-    InterpreterLaunchContext context = new InterpreterLaunchContext(properties, option, null, "settingsId", "settingsGroupId","settingsGroupName");
+    InterpreterLaunchContext context = new InterpreterLaunchContext(properties, option, null,
+      "settingsId", "settingsGroupId","settingsGroupName", "settingsName");
     InterpreterClient client = launcher.launch(context);
     assertTrue( client instanceof SparkK8RemoteInterpreterManagedProcess);
     SparkK8RemoteInterpreterManagedProcess interpreterProcess = (SparkK8RemoteInterpreterManagedProcess) client;
-    assertEquals("groupName", interpreterProcess.getInterpreterGroupName());
     assertEquals(".//interpreter/groupName", interpreterProcess.getInterpreterDir());
     assertEquals(".//local-repo/groupId", interpreterProcess.getLocalRepoDir());
     assertEquals(zConf.getInterpreterRemoteRunnerPath(), interpreterProcess.getInterpreterRunner());

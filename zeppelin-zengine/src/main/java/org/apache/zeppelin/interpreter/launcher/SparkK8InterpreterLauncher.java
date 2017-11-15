@@ -59,20 +59,42 @@ public class SparkK8InterpreterLauncher extends SparkInterpreterLauncher {
       // create new remote process
       String localRepoPath = zConf.getInterpreterLocalRepoPath() + "/"
               + context.getInterpreterSettingId();
+
+      String groupId = context.getInterpreterSettingGroupId();
+      String processIdLabel = generatePodLabelId(groupId);
+      properties.put("spark.kubernetes.driver.label.interpreter-processId", processIdLabel);
+      groupId = formatId(groupId, 50);
+      String driverPodNamePrefix = properties.get("spark.app.name") + "-" + groupId;
+      properties.put("spark.app.name", driverPodNamePrefix);
+      properties.put("spark.metrics.namespace", driverPodNamePrefix);
+
+      Map<String, String> env = super.buildEnvFromProperties();
+      LOGGER.info(env.get("ZEPPELIN_SPARK_CONF"));
+
       return new SparkK8RemoteInterpreterManagedProcess(
               runner != null ? runner.getPath() : zConf.getInterpreterRemoteRunnerPath(),
               zConf.getCallbackPortRange(),
               zConf.getInterpreterDir() + "/" + groupName, localRepoPath,
-              buildEnvFromProperties(), connectTimeout, groupName,
-              context.getInterpreterSettingId());
+              env, connectTimeout, processIdLabel, driverPodNamePrefix);
     }
   }
 
-  @Override
-  protected Map<String, String> buildEnvFromProperties() {
-    Map<String, String> env = super.buildEnvFromProperties();
-    env.put("RUN_SPARK_ON_K8", Boolean.TRUE.toString());
-    return env;
+  /**
+   * Id for spark submit must be formatted to contain only alfanumeric chars.
+   * @param str
+   * @param maxLength
+   * @return
+   */
+  private String formatId(String str, int maxLength) {
+    str = str.replaceAll("[^a-zA-Z0-9]", "-").toLowerCase();
+    if (str.length() > maxLength) {
+      str = str.substring(0, maxLength - 1);
+    }
+    return str;
+  }
+
+  private String generatePodLabelId(String interpreterGroupId ) {
+    return formatId(interpreterGroupId + "_" + System.currentTimeMillis(), 64);
   }
 
 }

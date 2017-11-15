@@ -37,7 +37,7 @@ public class ShellScriptLauncherTest {
     properties.setProperty("ENV_1", "VALUE_1");
     properties.setProperty("property_1", "value_1");
     InterpreterOption option = new InterpreterOption();
-    InterpreterLaunchContext context = new InterpreterLaunchContext(properties, option, null, "groupId", "groupName", "name");
+    InterpreterLaunchContext context = new InterpreterLaunchContext(properties, option, null,"groupId", "groupName", "name");
     InterpreterClient client = launcher.launch(context);
     assertTrue( client instanceof RemoteInterpreterManagedProcess);
     RemoteInterpreterManagedProcess interpreterProcess = (RemoteInterpreterManagedProcess) client;

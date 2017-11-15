@@ -277,8 +277,10 @@ public class InterpreterSetting {
 
   private void createLauncher(Properties properties) {
     if (group.equals("spark")) {
-      if (properties.getProperty("master") != null
-              && properties.getProperty("master").startsWith("k8s://")) {
+      String deployMode = properties.getProperty("spark.submit.deployMode");
+      String masterUrl = properties.getProperty("master");
+      if (deployMode != null && deployMode.equals("cluster") &&
+        masterUrl != null && masterUrl.startsWith("k8s://")) {
         this.launcher = new SparkK8InterpreterLauncher(this.conf);
       } else {
         this.launcher = new SparkInterpreterLauncher(this.conf);
@@ -665,13 +667,14 @@ public class InterpreterSetting {
     return interpreters;
   }
 
-  synchronized RemoteInterpreterProcess createInterpreterProcess() throws IOException {
+  synchronized RemoteInterpreterProcess createInterpreterProcess(String groupId)
+      throws IOException {
     Properties properties = getJavaProperties();
     if (launcher == null) {
       createLauncher(properties);
     }
-    InterpreterLaunchContext launchContext = new
-        InterpreterLaunchContext(getJavaProperties(), option, interpreterRunner, id, group, name);
+    InterpreterLaunchContext launchContext = new InterpreterLaunchContext(
+      getJavaProperties(), option, interpreterRunner, id, groupId, group, name);
     RemoteInterpreterProcess process = (RemoteInterpreterProcess) launcher.launch(launchContext);
     process.setRemoteInterpreterEventPoller(
         new RemoteInterpreterEventPoller(remoteInterpreterProcessListener, appEventListener));

@@ -52,10 +52,9 @@ Checkout the latest source code from https://github.com/apache/zeppelin then app
 ```
 cd {zeppelin_source}/zeppelin-distribution/target/zeppelin-0.8.0-SNAPSHOT
 cat > Dockerfile <<EOF
-FROM banzaicloud/spark-base:v2.2.0-k8s-1.0.160
+FROM banzaicloud/spark-base:v2.2.0-k8s-1.0.179
 COPY zeppelin-0.8.0-SNAPSHOT /opt/zeppelin
 ADD https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl /usr/local/bin
-RUN chmod +x /usr/local/bin/kubectl && sed -i s/INFO/DEBUG/ /opt/zeppelin/conf/log4j.properties
 WORKDIR /opt/zeppelin
 ENTRYPOINT bin/zeppelin.sh
 EOF
@@ -73,8 +72,8 @@ Init docker env: `eval $(minikube docker-env)`
 ## Build & tag Docker image
 
 ```
-docker build -t zeppelin-server:v2.2.0-k8s-1.0.34 -f Dockerfile .
-docker tag <imageid> banzaicloud/zeppelin-server:v2.2.0-k8s-1.0.34
+docker build -t zeppelin-server:v0.8.0-k8s-1.0.34 -f Dockerfile .
+docker tag <imageid> banzaicloud/zeppelin-server:v0.8.0-k8s-1.0.34
 ```
 
 You can retrieve the `imageid` by running docker images` 
@@ -124,11 +123,11 @@ metadata:
 spec:
   containers:
   - name: zeppelin-server
-	image: banzaicloud/zeppelin-server:v2.2.0-k8s-1.0.34
+	image: banzaicloud/zeppelin-server:v0.8.0-k8s-1.0.34
 	env:
 	- name: SPARK_SUBMIT_OPTIONS
-  	value: --deploy-mode cluster --kubernetes-namespace default 
---conf spark.executor.instances=1 --master k8s://https://{KUBERNATES_NODE_ADDRESS}:8443 
+  	value: --kubernetes-namespace default
+--conf spark.executor.instances=1
 --conf spark.kubernetes.resourceStagingServer.uri=http://{RESOURCE_STAGING_SERVER_ADDRESS}:10000 
 --conf spark.kubernetes.resourceStagingServer.internal.uri=http://{RESOURCE_STAGING_SERVER_ADDRESS}:10000
 --conf spark.kubernetes.driver.docker.image=banzaicloud/spark-driver:v2.2.0-k8s-1.0.160 --conf spark.kubernetes.executor.docker.image=banzaicloud/spark-executor:v2.2.0-k8s-1.0.160 --conf spark.kubernetes.initcontainer.docker.image=banzaicloud/spark-init:v2.2.0-k8s-1.0.160
@@ -139,7 +138,6 @@ EOF
 
 ## Edit SPARK_SUBMIT_OPTIONS: 
 
-- Set KUBERNATES_NODE_ADDRESS property with the appropriate address of your Kubernetes cluster address, in case of running Minikube you can get node address by running: `minikube status`. 
 - Set RESOURCE_STAGING_SERVER_ADDRESS address retrieving either from K8 dashboard or running: 
 
   `kubectl get svc spark-resource-staging-service -o jsonpath='{.spec.clusterIP}'`
@@ -156,6 +154,8 @@ Zeppelin server should be reachable from outside of K8 cluster on K8 node addres
 ## Edit spark interpreter settings
 Set master url to point to your Kubernetes cluster: k8s://https://x.x.x.x:8443 or use default address which works inside a Kubernetes cluster:
 k8s://https://kubernetes:443.
+Add property 'spark.submit.deployMode' and set value to 'cluster'.
+
 
 ## Run ’Zeppelin Tutorial/Basic Features (Spark)’ notebook
 In case of problems you can check for spark-submit output in Zeppelin logs after logging into zeppelin-server pod and restart Spark interpreter to try again.

@@ -101,10 +101,11 @@ public class RemoteInterpreter extends Interpreter {
       return this.interpreterProcess;
     }
     ManagedInterpreterGroup intpGroup = getInterpreterGroup();
-    this.interpreterProcess = intpGroup.getOrCreateInterpreterProcess();
+    RemoteInterpreterProcess interpreterProcess = intpGroup.getOrCreateInterpreterProcess();
     synchronized (interpreterProcess) {
       if (!interpreterProcess.isRunning()) {
         interpreterProcess.start(this.getUserName(), false);
+        this.interpreterProcess = interpreterProcess;
         interpreterProcess.getRemoteInterpreterEventPoller()
             .setInterpreterProcess(interpreterProcess);
         interpreterProcess.getRemoteInterpreterEventPoller().setInterpreterGroup(intpGroup);

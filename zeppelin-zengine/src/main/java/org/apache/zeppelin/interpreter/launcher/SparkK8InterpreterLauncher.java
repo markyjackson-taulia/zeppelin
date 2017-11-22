@@ -64,18 +64,28 @@ public class SparkK8InterpreterLauncher extends SparkInterpreterLauncher {
       String processIdLabel = generatePodLabelId(groupId);
       properties.put("spark.kubernetes.driver.label.interpreter-processId", processIdLabel);
       groupId = formatId(groupId, 50);
+      // add groupId to app name, this will be the prefix for driver pod name if it's not
+      // explicitly specified
       String driverPodNamePrefix = properties.get("spark.app.name") + "-" + groupId;
       properties.put("spark.app.name", driverPodNamePrefix);
+      // set same id for metrics namespace to be able to identify metrics of a specific app
       properties.put("spark.metrics.namespace", driverPodNamePrefix);
 
       Map<String, String> env = super.buildEnvFromProperties();
-      LOGGER.info(env.get("ZEPPELIN_SPARK_CONF"));
+      StringBuilder sparkConfBuilder = new StringBuilder(env.get("ZEPPELIN_SPARK_CONF"));
+      sparkConfBuilder.append(" --files " + zConf.getConfDir() + "/log4j_k8_cluster" +
+        ".properties");
+      env.put("ZEPPELIN_SPARK_CONF", sparkConfBuilder.toString());
+
+      LOGGER.info(sparkConfBuilder.toString());
+
+      env.put("ZEPPELIN_SPARK_K8_CLUSTER", "true");
 
       return new SparkK8RemoteInterpreterManagedProcess(
               runner != null ? runner.getPath() : zConf.getInterpreterRemoteRunnerPath(),
               zConf.getCallbackPortRange(),
               zConf.getInterpreterDir() + "/" + groupName, localRepoPath,
-              env, connectTimeout, processIdLabel, driverPodNamePrefix);
+              env, connectTimeout, processIdLabel);
     }
   }
 

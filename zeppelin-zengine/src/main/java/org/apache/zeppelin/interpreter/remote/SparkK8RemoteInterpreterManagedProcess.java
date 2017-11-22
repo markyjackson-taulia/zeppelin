@@ -18,11 +18,24 @@
 package org.apache.zeppelin.interpreter.remote;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.client.*;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodStatus;
+import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
-import org.apache.commons.exec.*;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.Watch;
+import io.fabric8.kubernetes.client.Watcher;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
+import org.apache.commons.exec.ExecuteResultHandler;
+import org.apache.commons.exec.ExecuteWatchdog;
+import org.apache.commons.exec.LogOutputStream;
+import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.exec.environment.EnvironmentUtils;
 import org.apache.zeppelin.interpreter.thrift.RemoteInterpreterService;
 import org.slf4j.Logger;
@@ -63,8 +76,6 @@ public class SparkK8RemoteInterpreterManagedProcess extends RemoteInterpreterPro
   protected final String localRepoDir;
 
   protected Map<String, String> env;
-
-  private final String driverPodNamePrefix;
   private final String processLabelId;
 
   /**
@@ -87,8 +98,7 @@ public class SparkK8RemoteInterpreterManagedProcess extends RemoteInterpreterPro
                                                 String localRepoDir,
                                                 Map<String, String> env,
                                                 int connectTimeout,
-                                                String processLabelId,
-                                                String driverPodNamePrefix) {
+                                                String processLabelId) {
 
     super(connectTimeout);
     this.interpreterRunner = intpRunner;
@@ -97,7 +107,6 @@ public class SparkK8RemoteInterpreterManagedProcess extends RemoteInterpreterPro
     this.interpreterDir = intpDir;
     this.localRepoDir = localRepoDir;
     this.processLabelId = processLabelId;
-    this.driverPodNamePrefix = driverPodNamePrefix;
     this.port = 30000;
   }
 
@@ -123,27 +132,24 @@ public class SparkK8RemoteInterpreterManagedProcess extends RemoteInterpreterPro
 
         @Override
         public void eventReceived(Action action, Pod pod) {
-          String podName = pod.getMetadata().getName();
-          if (podName.startsWith(driverPodNamePrefix)) {
-            driverPodName = podName;
-            logger.debug("Driver Pod {} Status: {}", podName, pod.getStatus().getPhase());
-            podStatus = pod.getStatus();
-            String status = podStatus.getPhase();
-            if (status.equalsIgnoreCase("running")) {
-              Service driverService  = getOrCreateEndpointService(pod);
-              if (driverService != null) {
-                host = driverService.getSpec().getClusterIP();
-                logger.info("Driver Service created: {}:{}", host, port);
-                synchronized (serviceRunning) {
-                  serviceRunning.set(true);
-                  serviceRunning.notifyAll();
-                }
-              }
-            } else if (status.equalsIgnoreCase("failed")) {
+          driverPodName = pod.getMetadata().getName();
+          logger.debug("Driver Pod {} Status: {}", driverPodName, pod.getStatus().getPhase());
+          podStatus = pod.getStatus();
+          String status = podStatus.getPhase();
+          if (status.equalsIgnoreCase("running")) {
+            Service driverService  = getOrCreateEndpointService(pod);
+            if (driverService != null) {
+              host = driverService.getSpec().getClusterIP();
+              logger.info("Driver Service created: {}:{}", host, port);
               synchronized (serviceRunning) {
-                serviceRunning.set(false);
+                serviceRunning.set(true);
                 serviceRunning.notifyAll();
               }
+            }
+          } else if (status.equalsIgnoreCase("failed")) {
+            synchronized (serviceRunning) {
+              serviceRunning.set(false);
+              serviceRunning.notifyAll();
             }
           }
         }
@@ -249,11 +255,9 @@ public class SparkK8RemoteInterpreterManagedProcess extends RemoteInterpreterPro
     if (podList.size() >= 1) {
       Pod driverPod = podList.iterator().next();
       String podName = driverPod.getMetadata().getName();
-      if (podName != null && podName.startsWith(driverPodNamePrefix)) {
-        logger.debug("Delete Driver pod {} if Running, with status: ", podName, driverPod
-          .getStatus().getPhase());
-        getKubernetesClient().pods().delete(driverPod);
-      }
+      logger.debug("Delete Driver pod {} if Running, with status: ", podName,
+        driverPod.getStatus().getPhase());
+      getKubernetesClient().pods().delete(driverPod);
     } else {
       logger.debug("Pod not found!");
     }
@@ -328,12 +332,17 @@ public class SparkK8RemoteInterpreterManagedProcess extends RemoteInterpreterPro
   public void onProcessComplete(int exitValue) {
     logger.info("Interpreter process exited {}", exitValue);
     running.set(false);
-
+    synchronized (serviceRunning) {
+      serviceRunning.notifyAll();
+    }
   }
 
   public void onProcessFailed(ExecuteException e) {
     logger.info("Interpreter process failed {}", e);
     running.set(false);
+    synchronized (serviceRunning) {
+      serviceRunning.notifyAll();
+    }
   }
 
   @Override

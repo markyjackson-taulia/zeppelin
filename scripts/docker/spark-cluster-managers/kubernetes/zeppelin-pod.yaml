@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: zeppelin-server
+  labels:
+    app: zeppelin-server
+spec:
+  containers:
+  - name: zeppelin-server
+    image: shipyardlabs/zeppelin-server:v0.8.0-k8s-1.0.86
+    env:
+    - name: SPARK_SUBMIT_OPTIONS
+      value: >-
+        --kubernetes-namespace default
+        --conf spark.executor.instances=2
+        --conf spark.kubernetes.resourceStagingServer.uri=http://10.0.0.121:10000
+        --conf spark.kubernetes.resourceStagingServer.internal.uri=http://10.0.0.121:10000
+        --conf spark.kubernetes.driver.docker.image=banzaicloud/spark-driver-r:v2.2.0-k8s-1.0.179
+        --conf spark.kubernetes.executor.docker.image=banzaicloud/spark-executor-r:v2.2.0-k8s-1.0.179
+        --conf spark.kubernetes.initcontainer.docker.image=banzaicloud/spark-init:v2.2.0-k8s-1.0.179
+        --conf spark.driver.cores="300m"
+    ports:
+       - containerPort: 8080

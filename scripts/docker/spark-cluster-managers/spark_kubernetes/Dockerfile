@@ -14,19 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+FROM shipyardlabs/spark-base:zeppelin
 
-log4j.rootLogger = INFO, stdout, dailyfile
+# `Z_VERSION` will be updated by `dev/change_zeppelin_version.sh`
+ENV Z_VERSION="0.8.0-SNAPSHOT"
+COPY "zeppelin-$Z_VERSION/zeppelin-$Z_VERSION" /opt/zeppelin
 
-log4j.appender.stdout = org.apache.log4j.ConsoleAppender
-log4j.appender.stdout.Threshold = DEBUG
-log4j.appender.stdout.layout = org.apache.log4j.PatternLayout
-log4j.appender.stdout.layout.ConversionPattern=%5p [%d] ({%t} %F[%M]:%L) - %m%n
+ADD https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl /usr/local/bin
+RUN chmod +x /usr/local/bin/kubectl
 
-log4j.appender.dailyfile.DatePattern=.yyyy-MM-dd
-log4j.appender.dailyfile.Threshold = DEBUG
-log4j.appender.dailyfile = org.apache.log4j.DailyRollingFileAppender
-log4j.appender.dailyfile.File = ${zeppelin.log.file}
-log4j.appender.dailyfile.layout = org.apache.log4j.PatternLayout
-log4j.appender.dailyfile.layout.ConversionPattern=%5p [%d] ({%t} %F[%M]:%L) - %m%n
+WORKDIR /opt/zeppelin
 
-log4j.logger.org.apache.zeppelin.interpreter = DEBUG
+ENTRYPOINT bin/zeppelin.sh
+

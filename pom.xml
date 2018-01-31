@@ -62,32 +62,32 @@
     <module>markdown</module>
     <module>angular</module>
     <module>shell</module>
-    <module>livy</module>
+    <!--module>livy</module>
     <module>hbase</module>
-    <module>pig</module>
+    <module>pig</module-->
     <module>jdbc</module>
     <module>file</module>
-    <module>flink</module>
+    <!--module>flink</module>
     <module>ignite</module>
-    <module>kylin</module>
+    <module>kylin</module-->
     <module>python</module>
-    <module>lens</module>
+    <!--module>lens</module>
     <module>cassandra</module>
     <module>elasticsearch</module>
     <module>bigquery</module>
     <module>alluxio</module>
     <module>scio</module>
-    <module>neo4j</module>
+    <module>neo4j</module!-->
     <module>zeppelin-web</module>
     <module>zeppelin-server</module>
     <module>zeppelin-jupyter</module>
-    <module>zeppelin-distribution</module>
+    <!--module>zeppelin-distribution</module-->
   </modules>
 
   <properties>
     <!-- language versions -->
-    <scala.version>2.10.5</scala.version>
-    <scala.binary.version>2.10</scala.binary.version>
+    <scala.version>2.11.7</scala.version>
+    <scala.binary.version>2.11</scala.binary.version>
     <scalatest.version>2.2.4</scalatest.version>
     <scalacheck.version>1.12.5</scalacheck.version>
 

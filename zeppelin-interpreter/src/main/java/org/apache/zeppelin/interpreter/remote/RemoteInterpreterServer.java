@@ -607,6 +607,7 @@ public class RemoteInterpreterServer extends Thread
 
     @Override
     protected Object jobRun() throws Throwable {
+      ClassLoader currentThreadContextClassloader = Thread.currentThread().getContextClassLoader();
       try {
         InterpreterContext.set(context);
 
@@ -655,6 +656,7 @@ public class RemoteInterpreterServer extends Thread
         }
         return new InterpreterResult(result.code(), resultMessages);
       } finally {
+        Thread.currentThread().setContextClassLoader(currentThreadContextClassloader);
         InterpreterContext.remove();
       }
     }
